@@ -153,7 +153,7 @@ THEME = gr.themes.Soft(
     neutral_hue="slate",
 )
 
-with gr.Blocks(theme=THEME, title="Snorkel RAG Evaluation System") as demo:
+with gr.Blocks(title="Snorkel RAG Evaluation System") as demo:
     gr.Markdown("""
     # 🧪 Snorkel RAG Evaluation System
     **Automated evaluation pipeline for enterprise RAG agents** — Inspired by Snorkel AI's programmatic labeling methodology.
@@ -290,4 +290,4 @@ with gr.Blocks(theme=THEME, title="Snorkel RAG Evaluation System") as demo:
     """)
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=THEME)
