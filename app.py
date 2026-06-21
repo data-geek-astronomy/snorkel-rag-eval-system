@@ -35,7 +35,7 @@ def safe_post(url, **kwargs):
 # ── TAB 1: INGEST DOCUMENT ────────────────────────────────────────────────────
 def ingest_document(pdf_file):
     if pdf_file is None:
-        return "⚠️ Please upload a PDF file first."
+        return "⚠️ Please upload a PDF file first.", None
     try:
         pdf_path = pdf_file if isinstance(pdf_file, str) else pdf_file.name
         with open(pdf_path, "rb") as f:
@@ -51,10 +51,10 @@ def ingest_document(pdf_file):
             f"- **Chunks stored**: {chunks}\n"
             f"- **Vector store**: Supabase (text-embedding-3-small)\n"
             f"- **Timestamp**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"You can now query this document in the **Ask Question** tab."
-        )
+            f"You can now query this document in the **Ask Question** tab or run evaluation below."
+        ), pdf_path
     except Exception as e:
-        return f"❌ Ingestion failed: {e}\n\nMake sure the n8n Document Ingestion Agent is active."
+        return f"❌ Ingestion failed: {e}\n\nMake sure the n8n Document Ingestion Agent is active.", None
 
 # ── TAB 2: RAG QUERY ──────────────────────────────────────────────────────────
 def query_rag(question):
@@ -76,11 +76,11 @@ def query_rag(question):
     return answer, citation_md, confidence, meta
 
 # ── TAB 3: RUN EVALUATION ─────────────────────────────────────────────────────
-def run_eval(pdf_file):
-    if pdf_file is None:
-        return "⚠️ Please upload a PDF to evaluate."
+def run_eval(stored_path):
+    if not stored_path:
+        return "⚠️ No document ingested yet. Please upload a PDF in the **Ingest Document** tab first."
     try:
-        pdf_path = pdf_file if isinstance(pdf_file, str) else pdf_file.name
+        pdf_path = stored_path
         with open(pdf_path, "rb") as f:
             files = {"data": (os.path.basename(pdf_path), f, "application/pdf")}
             r = requests.post(EVAL_URL, files=files, timeout=600)
@@ -156,6 +156,7 @@ THEME = gr.themes.Soft(
 )
 
 with gr.Blocks(title="Snorkel RAG Evaluation System", theme=THEME) as demo:
+    last_pdf = gr.State(None)  # stores path of last ingested PDF
     gr.Markdown("""
     # 🧪 Snorkel RAG Evaluation System
     **Automated evaluation pipeline for enterprise RAG agents** — Inspired by Snorkel AI's programmatic labeling methodology.
@@ -172,7 +173,7 @@ with gr.Blocks(title="Snorkel RAG Evaluation System", theme=THEME) as demo:
                 ingest_file = gr.File(label="Upload PDF", file_types=[".pdf"])
             ingest_btn    = gr.Button("Ingest Document →", variant="primary")
             ingest_result = gr.Markdown(label="Result")
-            ingest_btn.click(fn=ingest_document, inputs=ingest_file, outputs=ingest_result)
+            ingest_btn.click(fn=ingest_document, inputs=ingest_file, outputs=[ingest_result, last_pdf])
 
         # ── TAB 2: QUERY ──────────────────────────────────────────────────────
         with gr.Tab("💬 Ask Question (RAG)"):
@@ -201,17 +202,17 @@ with gr.Blocks(title="Snorkel RAG Evaluation System", theme=THEME) as demo:
         with gr.Tab("🔬 Run Evaluation"):
             gr.Markdown("""
             ### Trigger the Snorkel RAG Evaluation Pipeline
-            Upload a document to evaluate — the pipeline will:
-            1. Generate 10 adversarial questions with GPT-4o
+            Uses the document you already ingested — no re-upload needed.
+            The pipeline will:
+            1. Generate adversarial questions with GPT-4o
             2. Query your RAG agent for each question
             3. Score with `citation_checker` + `snorkel_rubric_evaluator`
             4. Gate at 90% pass rate → Production Ready or Expert Review
             """)
-            eval_file   = gr.File(label="Upload PDF to Evaluate", file_types=[".pdf"])
             eval_btn    = gr.Button("Run Evaluation Pipeline →", variant="primary")
             eval_result = gr.Markdown(label="Evaluation Result")
-            gr.Markdown("> ⏳ Evaluation takes ~2-3 minutes (10 questions × RAG call + scoring)")
-            eval_btn.click(fn=run_eval, inputs=eval_file, outputs=eval_result)
+            gr.Markdown("> ⏳ Evaluation takes ~2-3 minutes. Make sure you've ingested a document first.")
+            eval_btn.click(fn=run_eval, inputs=last_pdf, outputs=eval_result)
 
         # ── TAB 4: DASHBOARD ──────────────────────────────────────────────────
         with gr.Tab("📊 Dashboard"):
