@@ -83,32 +83,20 @@ def run_eval(stored_path):
         pdf_path = stored_path
         with open(pdf_path, "rb") as f:
             files = {"data": (os.path.basename(pdf_path), f, "application/pdf")}
-            r = requests.post(EVAL_URL, files=files, timeout=600)
+            r = requests.post(EVAL_URL, files=files, timeout=60)
             r.raise_for_status()
-            result = r.json()
 
-        pass_rate  = result.get("pass_rate", "?")
-        avg_score  = result.get("average_score", "?")
-        total_q    = result.get("total_questions", 10)
-        passed     = result.get("passed_count", "?")
-        run_id     = result.get("eval_run_id", "?")
-        prod_ready = result.get("production_ready", False)
-
-        status_icon = "🟢" if prod_ready else "🔴"
-        status_text = "PRODUCTION READY" if prod_ready else "NEEDS EXPERT REVIEW"
-
+        source = os.path.basename(pdf_path)
         return (
-            f"{status_icon} **Evaluation Complete — {status_text}**\n\n"
-            f"| Metric | Value |\n|--------|-------|\n"
-            f"| Pass Rate | **{pass_rate}%** |\n"
-            f"| Average Score | {avg_score}/100 |\n"
-            f"| Questions Passed | {passed}/{total_q} |\n"
-            f"| Run ID | `{run_id}` |\n"
-            f"| Threshold | 90% |\n\n"
-            f"{'✅ Agent approved for production.' if prod_ready else '⚠️ Expert calibration form triggered — check n8n for review.'}"
+            f"🚀 **Evaluation Pipeline Started**\n\n"
+            f"- **Document**: {source}\n"
+            f"- **Pipeline**: Generating questions → RAG queries → Scoring → Logging\n"
+            f"- **Started at**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"⏳ Results will be ready in **~2 minutes**.\n\n"
+            f"👉 Go to the **📊 Dashboard** tab and click **Refresh Dashboard** to see your results."
         )
     except Exception as e:
-        return f"❌ Evaluation failed: {e}"
+        return f"❌ Evaluation trigger failed: {e}"
 
 # ── TAB 4: DASHBOARD ──────────────────────────────────────────────────────────
 def load_dashboard():
@@ -211,7 +199,7 @@ with gr.Blocks(title="Snorkel RAG Evaluation System", theme=THEME) as demo:
             """)
             eval_btn    = gr.Button("Run Evaluation Pipeline →", variant="primary")
             eval_result = gr.Markdown(label="Evaluation Result")
-            gr.Markdown("> ⏳ Evaluation takes ~2-3 minutes. Make sure you've ingested a document first.")
+            gr.Markdown("> ⏳ Pipeline runs async — results appear in the Dashboard tab in ~2 minutes.")
             eval_btn.click(fn=run_eval, inputs=last_pdf, outputs=eval_result)
 
         # ── TAB 4: DASHBOARD ──────────────────────────────────────────────────
