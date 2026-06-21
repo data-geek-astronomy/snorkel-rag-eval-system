@@ -37,13 +37,14 @@ def ingest_document(pdf_file):
     if pdf_file is None:
         return "⚠️ Please upload a PDF file first."
     try:
-        with open(pdf_file.name, "rb") as f:
-            files = {"file": (os.path.basename(pdf_file.name), f, "application/pdf")}
+        pdf_path = pdf_file if isinstance(pdf_file, str) else pdf_file.name
+        with open(pdf_path, "rb") as f:
+            files = {"data": (os.path.basename(pdf_path), f, "application/pdf")}
             r = requests.post(INGEST_URL, files=files, timeout=300)
             r.raise_for_status()
             result = r.json()
         chunks = result.get("chunks_stored", "?")
-        source = os.path.basename(pdf_file.name)
+        source = os.path.basename(pdf_path)
         return (
             f"✅ **Document Ingested Successfully**\n\n"
             f"- **File**: {source}\n"
@@ -79,8 +80,9 @@ def run_eval(pdf_file):
     if pdf_file is None:
         return "⚠️ Please upload a PDF to evaluate."
     try:
-        with open(pdf_file.name, "rb") as f:
-            files = {"file": (os.path.basename(pdf_file.name), f, "application/pdf")}
+        pdf_path = pdf_file if isinstance(pdf_file, str) else pdf_file.name
+        with open(pdf_path, "rb") as f:
+            files = {"data": (os.path.basename(pdf_path), f, "application/pdf")}
             r = requests.post(EVAL_URL, files=files, timeout=600)
             r.raise_for_status()
             result = r.json()
@@ -153,7 +155,7 @@ THEME = gr.themes.Soft(
     neutral_hue="slate",
 )
 
-with gr.Blocks(title="Snorkel RAG Evaluation System") as demo:
+with gr.Blocks(title="Snorkel RAG Evaluation System", theme=THEME) as demo:
     gr.Markdown("""
     # 🧪 Snorkel RAG Evaluation System
     **Automated evaluation pipeline for enterprise RAG agents** — Inspired by Snorkel AI's programmatic labeling methodology.
@@ -290,4 +292,4 @@ with gr.Blocks(title="Snorkel RAG Evaluation System") as demo:
     """)
 
 if __name__ == "__main__":
-    demo.launch(theme=THEME)
+    demo.launch()
